@@ -3,71 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR & Barcode Scanner</title>
+    <title>FlashScan - Instant QR Scanner</title>
     <style>
         :root {
             --primary: #4361ee;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --success: #4cc9f0;
-            --error: #e63946;
-            --border-radius: 12px;
+            --primary-light: #5a72ef;
+            --accent: #00b4d8;
+            --white: #ffffff;
+            --light-bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --success: #00b894;
+            --error: #ff6b6b;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
         }
-        
+
         body {
-            background: #f5f7fa;
+            background: var(--light-bg);
+            color: var(--text-dark);
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             padding: 20px;
-            color: var(--dark);
         }
-        
-        .container {
+
+        .scanner-container {
             width: 100%;
-            max-width: 500px;
-            margin: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            max-width: 420px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
-        
-        header {
+
+        .scanner-header {
+            padding: 20px;
             text-align: center;
-            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
         }
-        
-        h1 {
-            font-size: 28px;
+
+        .scanner-header h1 {
+            font-size: 24px;
             font-weight: 700;
-            color: var(--primary);
             margin-bottom: 5px;
         }
-        
-        .scanner-box {
+
+        .scanner-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .video-container {
             position: relative;
             width: 100%;
             aspect-ratio: 1;
-            border-radius: var(--border-radius);
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            background: #000;
         }
-        
-        #scanner-video {
+
+        #video {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            background: #000;
         }
-        
+
         .scan-overlay {
             position: absolute;
             top: 0;
@@ -76,14 +86,14 @@
             height: 100%;
             background: linear-gradient(
                 to bottom,
-                rgba(0, 0, 0, 0.4) 0%,
-                rgba(0, 0, 0, 0) 20%,
-                rgba(0, 0, 0, 0) 80%,
-                rgba(0, 0, 0, 0.4) 100%
+                rgba(0, 0, 0, 0.2) 0%,
+                rgba(0, 0, 0, 0) 30%,
+                rgba(0, 0, 0, 0) 70%,
+                rgba(0, 0, 0, 0.2) 100%
             );
             pointer-events: none;
         }
-        
+
         .scan-frame {
             position: absolute;
             top: 50%;
@@ -92,331 +102,298 @@
             width: 70%;
             height: 70%;
             border: 3px solid var(--primary);
-            border-radius: var(--border-radius);
+            border-radius: 12px;
+            box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.4);
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
-            0% { opacity: 0.8; }
-            50% { opacity: 0.4; }
-            100% { opacity: 0.8; }
+            0% { border-color: var(--primary); }
+            50% { border-color: var(--accent); }
+            100% { border-color: var(--primary); }
         }
-        
-        .result-box {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+
+        .status-container {
+            padding: 15px;
+            text-align: center;
         }
-        
+
+        #status {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        #error {
+            font-size: 14px;
+            color: var(--error);
+            margin-top: 5px;
+        }
+
+        .result-container {
+            padding: 15px;
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 12px;
+            border: 1px dashed rgba(0, 0, 0, 0.1);
+        }
+
         .result-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--primary);
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-bottom: 10px;
+            color: var(--primary);
+            font-weight: 600;
         }
-        
-        .result-content {
-            background: var(--light);
-            padding: 15px;
+
+        #result {
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 15px;
             word-break: break-all;
-            min-height: 60px;
+            min-height: 50px;
+            background: rgba(0, 0, 0, 0.02);
         }
-        
-        .result-actions {
+
+        #result a {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        #result a:hover {
+            text-decoration: underline;
+        }
+
+        .action-buttons {
             display: flex;
             gap: 10px;
+            padding: 15px;
         }
-        
-        .action-btn {
+
+        .btn {
             flex: 1;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 12px;
             border: none;
-            font-weight: 500;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
         }
-        
-        .copy-btn {
-            background: #e9ecef;
-            color: var(--dark);
-        }
-        
-        .copy-btn:hover {
-            background: #dee2e6;
-            transform: translateY(-2px);
-        }
-        
-        .open-btn {
-            background: var(--success);
+
+        .btn-primary {
+            background: var(--primary);
             color: white;
         }
-        
-        .open-btn:hover {
-            background: #3ab7e0;
+
+        .btn-primary:hover {
+            background: var(--primary-light);
             transform: translateY(-2px);
         }
-        
-        .status {
-            text-align: center;
-            color: #6c757d;
-            font-size: 14px;
-            margin-top: 5px;
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-dark);
         }
-        
-        .permission-btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: 100%;
-            margin-top: 10px;
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
         }
-        
-        .permission-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
-        
-        .error-message {
-            color: var(--error);
-            text-align: center;
-            margin-top: 10px;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 500px) {
-            .result-actions {
-                flex-direction: column;
-            }
+
+        .btn-icon {
+            width: 18px;
+            height: 18px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>QR & Barcode Scanner</h1>
-            <p class="status" id="status-message">Preparing scanner...</p>
-        </header>
-        
-        <div class="scanner-box">
-            <video id="scanner-video" playsinline></video>
+    <div class="scanner-container">
+        <div class="scanner-header">
+            <h1>FlashScan</h1>
+            <p>Point your camera at a QR code</p>
+        </div>
+
+        <div class="video-container">
+            <video id="video" playsinline></video>
             <div class="scan-overlay"></div>
             <div class="scan-frame"></div>
         </div>
-        
-        <button id="permission-btn" class="permission-btn">
-            Allow Camera Access
-        </button>
-        <p id="error-message" class="error-message"></p>
-        
-        <div class="result-box">
+
+        <div class="status-container">
+            <div id="status">Initializing scanner...</div>
+            <div id="error"></div>
+        </div>
+
+        <div class="result-container">
             <div class="result-title">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Scan Result
             </div>
-            <div id="result-content" class="result-content">No code detected yet</div>
-            <div class="result-actions">
-                <button id="copy-btn" class="action-btn copy-btn" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copy
-                </button>
-                <button id="open-btn" class="action-btn open-btn" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    Open Link
-                </button>
-            </div>
+            <div id="result">No QR code detected yet</div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="copyBtn" class="btn btn-secondary" disabled>
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                Copy
+            </button>
+            <button id="openBtn" class="btn btn-primary" disabled>
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Open Link
+            </button>
         </div>
     </div>
 
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const videoElement = document.getElementById('scanner-video');
-            const resultContent = document.getElementById('result-content');
-            const copyBtn = document.getElementById('copy-btn');
-            const openBtn = document.getElementById('open-btn');
-            const statusElement = document.getElementById('status-message');
-            const errorElement = document.getElementById('error-message');
-            const permissionBtn = document.getElementById('permission-btn');
+            const video = document.getElementById('video');
+            const resultDiv = document.getElementById('result');
+            const statusDiv = document.getElementById('status');
+            const errorDiv = document.getElementById('error');
+            const copyBtn = document.getElementById('copyBtn');
+            const openBtn = document.getElementById('openBtn');
             
-            const codeReader = new ZXing.BrowserMultiFormatReader();
-            let currentResult = null;
-            let scanActive = false;
-            let lastScannedCode = '';
-            
-            // Update status message
+            let stream = null;
+            let scanning = false;
+            let lastResult = null;
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+
+            // Update status
             function updateStatus(message, isError = false) {
-                statusElement.textContent = message;
-                statusElement.style.color = isError ? 'var(--error)' : '#6c757d';
+                statusDiv.textContent = message;
+                statusDiv.style.color = isError ? 'var(--error)' : 'var(--text-muted)';
             }
-            
-            // Show error message
+
+            // Show error
             function showError(message) {
-                errorElement.textContent = message;
+                errorDiv.textContent = message;
             }
-            
-            // Clear error message
+
+            // Clear error
             function clearError() {
-                errorElement.textContent = '';
+                errorDiv.textContent = '';
             }
-            
-            // Check if text is a valid URL
-            function isValidUrl(string) {
-                try {
-                    new URL(string);
-                    return true;
-                } catch (_) {
-                    return false;
-                }
-            }
-            
-            // Start automatic scanning
+
+            // Start scanning automatically
             async function startScanning() {
-                if (scanActive) return;
+                clearError();
+                updateStatus('Accessing camera...');
                 
                 try {
-                    updateStatus('Initializing scanner...');
-                    clearError();
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
                     
-                    // List available cameras
-                    const videoInputDevices = await codeReader.listVideoInputDevices();
-                    if (videoInputDevices.length === 0) {
-                        throw new Error('No cameras found');
+                    video.srcObject = stream;
+                    await video.play();
+                    
+                    updateStatus('Scanning... Point at a QR code');
+                    scanning = true;
+                    scanFrame();
+                } catch (err) {
+                    console.error('Camera error:', err);
+                    showError(`Error: ${err.message}`);
+                    updateStatus('Failed to access camera', true);
+                }
+            }
+
+            // Scan each frame
+            function scanFrame() {
+                if (!scanning) return;
+                
+                try {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: 'dontInvert'
+                        });
+
+                        if (qrCode) {
+                            handleResult(qrCode.data);
+                        }
                     }
                     
-                    updateStatus('Scanning... Point camera at a code');
-                    
-                    // Start decoding
-                    await codeReader.decodeFromVideoDevice(
-                        null, // Use default camera
-                        videoElement, 
-                        (result, error) => {
-                            if (result) {
-                                handleScanResult(result);
-                            }
-                            
-                            if (error) {
-                                if (!(error instanceof ZXing.NotFoundException)) {
-                                    console.error('Scan error:', error);
-                                    showError('Scan error: ' + error.message);
-                                }
-                            }
-                        },
-                        {
-                            tryPlayVideoTimeout: 1000,
-                            constraints: {
-                                video: {
-                                    facingMode: 'environment', // Prefer rear camera
-                                    focusMode: 'continuous'
-                                }
-                            }
-                        }
-                    );
-                    
-                    scanActive = true;
-                    permissionBtn.style.display = 'none';
-                } catch (error) {
-                    console.error('Scanner initialization failed:', error);
-                    updateStatus('Scanner not ready', true);
-                    showError(error.message);
-                    permissionBtn.style.display = 'block';
-                    permissionBtn.textContent = 'Retry Camera Access';
+                    requestAnimationFrame(scanFrame);
+                } catch (err) {
+                    console.error('Scan error:', err);
+                    showError('Scan error: ' + err.message);
+                    stopScanning();
                 }
             }
-            
-            // Handle scan results
-            function handleScanResult(result) {
-                // Ignore if we got the same result within last 3 seconds
-                if (lastScannedCode === result.text && 
-                    Date.now() - lastScanTime < 3000) return;
+
+            // Handle scan result
+            function handleResult(data) {
+                if (data === lastResult) return;
                 
-                currentResult = result;
-                lastScannedCode = result.text;
-                lastScanTime = Date.now();
+                lastResult = data;
+                resultDiv.textContent = data;
                 
-                resultContent.textContent = result.text;
+                // Enable buttons
                 copyBtn.disabled = false;
+                openBtn.disabled = !data.match(/^https?:\/\//i);
                 
-                // Check if result is a URL
-                const isUrl = isValidUrl(result.text);
-                openBtn.disabled = !isUrl;
+                // Vibrate on detection
+                if ('vibrate' in navigator) navigator.vibrate(100);
                 
-                // Vibrate if supported
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(100);
+                // Make URLs clickable
+                if (data.match(/^https?:\/\//i)) {
+                    resultDiv.innerHTML = `<a href="${data}" target="_blank">${data}</a>`;
                 }
                 
-                updateStatus(`Detected: ${result.format}`);
-                
-                // Auto-open URLs if they're standard web links
-                if (isUrl && (result.text.startsWith('http://') || result.text.startsWith('https://'))) {
-                    setTimeout(() => {
-                        window.open(result.text, '_blank', 'noopener,noreferrer');
-                    }, 500);
-                }
+                updateStatus('QR code detected!');
             }
-            
+
             // Copy to clipboard
-            function copyToClipboard() {
-                if (!currentResult) return;
+            copyBtn.addEventListener('click', () => {
+                if (!lastResult) return;
                 
-                navigator.clipboard.writeText(currentResult.text).then(() => {
-                    const originalText = copyBtn.textContent;
+                navigator.clipboard.writeText(lastResult).then(() => {
                     copyBtn.textContent = 'Copied!';
                     setTimeout(() => {
-                        copyBtn.textContent = originalText;
+                        copyBtn.textContent = 'Copy';
                     }, 2000);
                 }).catch(err => {
-                    console.error('Failed to copy:', err);
-                    showError('Failed to copy to clipboard');
+                    showError('Failed to copy: ' + err.message);
                 });
-            }
-            
+            });
+
             // Open URL
-            function openUrl() {
-                if (!currentResult || !isValidUrl(currentResult.text)) return;
-                
-                window.open(currentResult.text, '_blank', 'noopener,noreferrer');
-            }
-            
-            // Event listeners
-            permissionBtn.addEventListener('click', startScanning);
-            copyBtn.addEventListener('click', copyToClipboard);
-            openBtn.addEventListener('click', openUrl);
-            
-            // Initialize scanner
+            openBtn.addEventListener('click', () => {
+                if (!lastResult) return;
+                window.open(lastResult, '_blank', 'noopener,noreferrer');
+            });
+
+            // Start automatically
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                // Try to start automatically (will still prompt for permission)
                 startScanning();
             } else {
-                showError('Camera access not supported in this browser');
-                permissionBtn.style.display = 'none';
+                showError('Camera access not supported in your browser');
+                updateStatus('Unsupported browser', true);
             }
-            
-            // Track last scan time to prevent duplicates
-            let lastScanTime = 0;
         });
     </script>
 </body>
