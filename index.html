@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Scan - QR & Barcode Scanner</title>
+    <title>QR & Barcode Scanner</title>
     <style>
         :root {
             --primary: #4361ee;
             --light: #f8f9fa;
             --dark: #212529;
             --success: #4cc9f0;
+            --error: #e63946;
             --border-radius: 12px;
         }
         
@@ -192,6 +193,13 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         
+        .error-message {
+            color: var(--error);
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
         @media (max-width: 500px) {
             .result-actions {
                 flex-direction: column;
@@ -202,8 +210,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>Auto Scan</h1>
-            <p class="status">Point your camera at a QR or barcode</p>
+            <h1>QR & Barcode Scanner</h1>
+            <p class="status" id="status-message">Preparing scanner...</p>
         </header>
         
         <div class="scanner-box">
@@ -213,8 +221,9 @@
         </div>
         
         <button id="permission-btn" class="permission-btn">
-            Enable Camera
+            Allow Camera Access
         </button>
+        <p id="error-message" class="error-message"></p>
         
         <div class="result-box">
             <div class="result-title">
@@ -248,17 +257,29 @@
             const resultContent = document.getElementById('result-content');
             const copyBtn = document.getElementById('copy-btn');
             const openBtn = document.getElementById('open-btn');
-            const statusElement = document.querySelector('.status');
+            const statusElement = document.getElementById('status-message');
+            const errorElement = document.getElementById('error-message');
             const permissionBtn = document.getElementById('permission-btn');
             
             const codeReader = new ZXing.BrowserMultiFormatReader();
             let currentResult = null;
             let scanActive = false;
+            let lastScannedCode = '';
             
             // Update status message
             function updateStatus(message, isError = false) {
                 statusElement.textContent = message;
-                statusElement.style.color = isError ? '#e63946' : '#6c757d';
+                statusElement.style.color = isError ? 'var(--error)' : '#6c757d';
+            }
+            
+            // Show error message
+            function showError(message) {
+                errorElement.textContent = message;
+            }
+            
+            // Clear error message
+            function clearError() {
+                errorElement.textContent = '';
             }
             
             // Check if text is a valid URL
@@ -276,25 +297,50 @@
                 if (scanActive) return;
                 
                 try {
+                    updateStatus('Initializing scanner...');
+                    clearError();
+                    
+                    // List available cameras
+                    const videoInputDevices = await codeReader.listVideoInputDevices();
+                    if (videoInputDevices.length === 0) {
+                        throw new Error('No cameras found');
+                    }
+                    
                     updateStatus('Scanning... Point camera at a code');
                     
-                    await codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
-                        if (result) {
-                            handleScanResult(result);
+                    // Start decoding
+                    await codeReader.decodeFromVideoDevice(
+                        null, // Use default camera
+                        videoElement, 
+                        (result, error) => {
+                            if (result) {
+                                handleScanResult(result);
+                            }
+                            
+                            if (error) {
+                                if (!(error instanceof ZXing.NotFoundException)) {
+                                    console.error('Scan error:', error);
+                                    showError('Scan error: ' + error.message);
+                                }
+                            }
+                        },
+                        {
+                            tryPlayVideoTimeout: 1000,
+                            constraints: {
+                                video: {
+                                    facingMode: 'environment', // Prefer rear camera
+                                    focusMode: 'continuous'
+                                }
+                            }
                         }
-                        
-                        if (error && !(error instanceof ZXing.NotFoundException)) {
-                            console.error(error);
-                            if (!scanActive) return;
-                            updateStatus('Scan error: ' + error.message, true);
-                        }
-                    });
+                    );
                     
                     scanActive = true;
                     permissionBtn.style.display = 'none';
                 } catch (error) {
-                    console.error(error);
-                    updateStatus('Error: ' + error.message, true);
+                    console.error('Scanner initialization failed:', error);
+                    updateStatus('Scanner not ready', true);
+                    showError(error.message);
                     permissionBtn.style.display = 'block';
                     permissionBtn.textContent = 'Retry Camera Access';
                 }
@@ -302,10 +348,14 @@
             
             // Handle scan results
             function handleScanResult(result) {
-                // Ignore if we got the same result
-                if (currentResult && currentResult.text === result.text) return;
+                // Ignore if we got the same result within last 3 seconds
+                if (lastScannedCode === result.text && 
+                    Date.now() - lastScanTime < 3000) return;
                 
                 currentResult = result;
+                lastScannedCode = result.text;
+                lastScanTime = Date.now();
+                
                 resultContent.textContent = result.text;
                 copyBtn.disabled = false;
                 
@@ -340,7 +390,7 @@
                     }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy:', err);
-                    updateStatus('Failed to copy to clipboard', true);
+                    showError('Failed to copy to clipboard');
                 });
             }
             
@@ -356,24 +406,17 @@
             copyBtn.addEventListener('click', copyToClipboard);
             openBtn.addEventListener('click', openUrl);
             
-            // Check if we already have camera permission
-            navigator.permissions && navigator.permissions.query({name: 'camera'}).then(permissionStatus => {
-                if (permissionStatus.state === 'granted') {
-                    startScanning();
-                }
-                
-                permissionStatus.onchange = () => {
-                    if (permissionStatus.state === 'granted') {
-                        startScanning();
-                    }
-                };
-            });
-            
-            // Auto-start on page load if possible
+            // Initialize scanner
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 // Try to start automatically (will still prompt for permission)
                 startScanning();
+            } else {
+                showError('Camera access not supported in this browser');
+                permissionBtn.style.display = 'none';
             }
+            
+            // Track last scan time to prevent duplicates
+            let lastScanTime = 0;
         });
     </script>
 </body>
